@@ -1,0 +1,392 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Akun pengguna aplikasi Sistem Prestasi Siswa dengan peran RBAC.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID pengguna.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Alamat email Google pengguna.",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "nama": {
+          "type": "string",
+          "description": "Nama tampilan pengguna.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "guru", "siswa", "kepala_sekolah"],
+          "description": "Peran akses pengguna."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "ID dokumen siswa yang tertaut jika peran siswa.",
+          "maxLength": 128
+        },
+        "jenjangBinaan": {
+          "type": "string",
+          "enum": ["", "SD", "SMP", "SMA", "Semua"],
+          "description": "Jenjang binaan untuk Guru/Pembina."
+        },
+        "statusAktif": {
+          "type": "string",
+          "enum": ["aktif", "nonaktif"],
+          "description": "Status keaktifan akun."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "nama", "role", "statusAktif", "createdAt", "updatedAt"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Data induk siswa SD/SMP/SMA Nurul Insan.",
+      "type": "object",
+      "properties": {
+        "nis": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40
+        },
+        "nama": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "jenjang": {
+          "type": "string",
+          "enum": ["SD", "SMP", "SMA"]
+        },
+        "kelas": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "jenisKelamin": {
+          "type": "string",
+          "enum": ["L", "P"]
+        },
+        "fotoUrl": {
+          "type": "string",
+          "maxLength": 350000
+        },
+        "statusAktif": {
+          "type": "string",
+          "enum": ["aktif", "nonaktif"]
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "pembinaUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "aiNarasi": {
+          "type": "string",
+          "maxLength": 5000
+        },
+        "aiPembinaan": {
+          "type": "string",
+          "maxLength": 5000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["nis", "nama", "jenjang", "kelas", "jenisKelamin", "statusAktif", "createdAt", "updatedAt"]
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "Catatan prestasi akademik maupun non-akademik siswa.",
+      "type": "object",
+      "properties": {
+        "studentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentNama": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "studentKelas": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "studentJenjang": {
+          "type": "string",
+          "enum": ["SD", "SMP", "SMA"]
+        },
+        "studentOwnerUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "namaLomba": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 180
+        },
+        "kategori": {
+          "type": "string",
+          "enum": ["Akademik", "Olahraga", "Seni", "Keagamaan", "Teknologi", "Kepemimpinan", "Lainnya"]
+        },
+        "tingkat": {
+          "type": "string",
+          "enum": ["Sekolah", "Kecamatan", "Kabupaten/Kota", "Provinsi", "Nasional", "Internasional"]
+        },
+        "peringkat": {
+          "type": "string",
+          "enum": ["Juara 1", "Juara 2", "Juara 3", "Harapan", "Finalis", "Peserta"]
+        },
+        "tanggal": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "maxLength": 10
+        },
+        "tahunAjaran": {
+          "type": "string",
+          "pattern": "^\\d{4}/\\d{4}$",
+          "maxLength": 9
+        },
+        "penyelenggara": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 160
+        },
+        "buktiUrl": {
+          "type": "string",
+          "maxLength": 450000
+        },
+        "buktiNama": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "deskripsi": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Menunggu", "Disetujui", "Ditolak", "Dibatalkan"]
+        },
+        "poin": {
+          "type": "number"
+        },
+        "alasanPenolakan": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "alasanPembatalan": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "submittedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "submittedByName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "verifiedByUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "verifiedByName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "studentId",
+        "studentNama",
+        "studentKelas",
+        "studentJenjang",
+        "namaLomba",
+        "kategori",
+        "tingkat",
+        "peringkat",
+        "tanggal",
+        "tahunAjaran",
+        "penyelenggara",
+        "status",
+        "poin",
+        "submittedByUid",
+        "submittedByName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PointSettings": {
+      "title": "PointSettings",
+      "description": "Matriks pengaturan poin otomatis berdasarkan tingkat dan peringkat.",
+      "type": "object",
+      "properties": {
+        "matrix": {
+          "type": "object"
+        },
+        "tahunAjaranAktif": {
+          "type": "string",
+          "maxLength": 9
+        },
+        "updatedByUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "updatedByName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["matrix", "tahunAjaranAktif", "updatedByUid", "updatedAt"]
+    },
+    "SchoolReport": {
+      "title": "SchoolReport",
+      "description": "Ringkasan laporan prestasi sekolah per tahun ajaran yang disunting dan disimpan.",
+      "type": "object",
+      "properties": {
+        "tahunAjaran": {
+          "type": "string",
+          "maxLength": 9
+        },
+        "ringkasanAi": {
+          "type": "string",
+          "maxLength": 10000
+        },
+        "updatedByUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "updatedByName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["tahunAjaran", "ringkasanAi", "updatedByUid", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Catatan riwayat perubahan data prestasi dan pengaturan secara permanen.",
+      "type": "object",
+      "properties": {
+        "targetType": {
+          "type": "string",
+          "enum": ["achievement", "student", "settings", "user", "report"]
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "targetTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "actorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "actorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "actorRole": {
+          "type": "string",
+          "enum": ["admin", "guru", "siswa", "kepala_sekolah"]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["targetType", "targetId", "targetTitle", "action", "actorUid", "actorName", "actorRole", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Profil akun dan peran pengguna aplikasi."
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Master data siswa SD/SMP/SMA Nurul Insan."
+    },
+    "/achievements/{achievementId}": {
+      "schema": { "$ref": "#/entities/Achievement" },
+      "description": "Rekam prestasi akademik dan non-akademik siswa."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/PointSettings" },
+      "description": "Pengaturan tabel poin dan tahun ajaran aktif."
+    },
+    "/school_reports/{reportId}": {
+      "schema": { "$ref": "#/entities/SchoolReport" },
+      "description": "Ringkasan laporan tahunan sekolah hasil AI yang telah disunting."
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Audit trail perubahan permanen (append-only)."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Prestasi Siswa — Sekolah Nurul Insan",
+  "description": "Aplikasi pencatatan, verifikasi, pemeringkatan poin, portofolio PDF, dan pelaporan prestasi akademik serta non-akademik siswa SD/SMP/SMA Nurul Insan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

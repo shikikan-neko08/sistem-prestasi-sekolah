@@ -1,0 +1,332 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Primitive Helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerified() && request.auth.token.email == 'ardaffa2000@gmail.com';
+    }
+
+    function hasUserDoc() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userRole() {
+      return isBootstrappedAdmin() ? 'admin' : (hasUserDoc() && userDoc().statusAktif == 'aktif' ? userDoc().role : '');
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || userRole() == 'admin';
+    }
+
+    function isGuru() {
+      return userRole() == 'guru';
+    }
+
+    function isKepsek() {
+      return userRole() == 'kepala_sekolah';
+    }
+
+    function isStaff() {
+      return isAdmin() || isGuru() || isKepsek();
+    }
+
+    function canManageAchievements() {
+      return isAdmin() || isGuru();
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'nama', 'role', 'statusAktif', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'nama', 'role', 'studentId', 'jenjangBinaan', 'statusAktif', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.nama is string && data.nama.size() >= 1 && data.nama.size() <= 120
+        && data.role in ['admin', 'guru', 'siswa', 'kepala_sekolah']
+        && data.statusAktif in ['aktif', 'nonaktif']
+        && (!('studentId' in data) || (data.studentId is string && data.studentId.size() <= 128))
+        && (!('jenjangBinaan' in data) || data.jenjangBinaan in ['', 'SD', 'SMP', 'SMA', 'Semua'])
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStudent(data) {
+      return data.keys().hasAll(['nis', 'nama', 'jenjang', 'kelas', 'jenisKelamin', 'statusAktif', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['nis', 'nama', 'jenjang', 'kelas', 'jenisKelamin', 'fotoUrl', 'statusAktif', 'ownerUid', 'pembinaUid', 'aiNarasi', 'aiPembinaan', 'createdAt', 'updatedAt'])
+        && data.nis is string && data.nis.size() >= 3 && data.nis.size() <= 40
+        && data.nama is string && data.nama.size() >= 2 && data.nama.size() <= 120
+        && data.jenjang in ['SD', 'SMP', 'SMA']
+        && data.kelas is string && data.kelas.size() >= 1 && data.kelas.size() <= 30
+        && data.jenisKelamin in ['L', 'P']
+        && data.statusAktif in ['aktif', 'nonaktif']
+        && (!('fotoUrl' in data) || (data.fotoUrl is string && data.fotoUrl.size() <= 350000))
+        && (!('ownerUid' in data) || (data.ownerUid is string && data.ownerUid.size() <= 128))
+        && (!('pembinaUid' in data) || (data.pembinaUid is string && data.pembinaUid.size() <= 128))
+        && (!('aiNarasi' in data) || (data.aiNarasi is string && data.aiNarasi.size() <= 5000))
+        && (!('aiPembinaan' in data) || (data.aiPembinaan is string && data.aiPembinaan.size() <= 5000))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAchievement(data) {
+      return data.keys().hasAll([
+          'studentId', 'studentNama', 'studentKelas', 'studentJenjang',
+          'namaLomba', 'kategori', 'tingkat', 'peringkat', 'tanggal',
+          'tahunAjaran', 'penyelenggara', 'status', 'poin',
+          'submittedByUid', 'submittedByName', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'studentId', 'studentNama', 'studentKelas', 'studentJenjang', 'studentOwnerUid',
+          'namaLomba', 'kategori', 'tingkat', 'peringkat', 'tanggal',
+          'tahunAjaran', 'penyelenggara', 'buktiUrl', 'buktiNama', 'deskripsi',
+          'status', 'poin', 'alasanPenolakan', 'alasanPembatalan',
+          'submittedByUid', 'submittedByName', 'verifiedByUid', 'verifiedByName',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.studentId)
+        && data.studentNama is string && data.studentNama.size() >= 1 && data.studentNama.size() <= 120
+        && data.studentKelas is string && data.studentKelas.size() >= 1 && data.studentKelas.size() <= 30
+        && data.studentJenjang in ['SD', 'SMP', 'SMA']
+        && (!('studentOwnerUid' in data) || (data.studentOwnerUid is string && data.studentOwnerUid.size() <= 128))
+        && data.namaLomba is string && data.namaLomba.size() >= 2 && data.namaLomba.size() <= 180
+        && data.kategori in ['Akademik', 'Olahraga', 'Seni', 'Keagamaan', 'Teknologi', 'Kepemimpinan', 'Lainnya']
+        && data.tingkat in ['Sekolah', 'Kecamatan', 'Kabupaten/Kota', 'Provinsi', 'Nasional', 'Internasional']
+        && data.peringkat in ['Juara 1', 'Juara 2', 'Juara 3', 'Harapan', 'Finalis', 'Peserta']
+        && data.tanggal is string && data.tanggal.size() == 10 && data.tanggal.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.tahunAjaran is string && data.tahunAjaran.size() == 9 && data.tahunAjaran.matches('^\\d{4}/\\d{4}$')
+        && data.penyelenggara is string && data.penyelenggara.size() >= 2 && data.penyelenggara.size() <= 160
+        && (!('buktiUrl' in data) || (data.buktiUrl is string && data.buktiUrl.size() <= 450000))
+        && (!('buktiNama' in data) || (data.buktiNama is string && data.buktiNama.size() <= 160))
+        && (!('deskripsi' in data) || (data.deskripsi is string && data.deskripsi.size() <= 1000))
+        && data.status in ['Menunggu', 'Disetujui', 'Ditolak', 'Dibatalkan']
+        && data.poin is number && data.poin >= 0 && data.poin <= 10000
+        && (!('alasanPenolakan' in data) || (data.alasanPenolakan is string && data.alasanPenolakan.size() <= 500))
+        && (!('alasanPembatalan' in data) || (data.alasanPembatalan is string && data.alasanPembatalan.size() <= 500))
+        && data.submittedByUid is string && data.submittedByUid.size() >= 1 && data.submittedByUid.size() <= 128
+        && data.submittedByName is string && data.submittedByName.size() >= 1 && data.submittedByName.size() <= 120
+        && (!('verifiedByUid' in data) || (data.verifiedByUid is string && data.verifiedByUid.size() <= 128))
+        && (!('verifiedByName' in data) || (data.verifiedByName is string && data.verifiedByName.size() <= 120))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPointSettings(data) {
+      return data.keys().hasAll(['matrix', 'tahunAjaranAktif', 'updatedByUid', 'updatedAt'])
+        && data.keys().hasOnly(['matrix', 'tahunAjaranAktif', 'updatedByUid', 'updatedByName', 'updatedAt'])
+        && data.matrix is map
+        && data.tahunAjaranAktif is string && data.tahunAjaranAktif.size() == 9 && data.tahunAjaranAktif.matches('^\\d{4}/\\d{4}$')
+        && data.updatedByUid is string && data.updatedByUid.size() >= 1 && data.updatedByUid.size() <= 128
+        && (!('updatedByName' in data) || (data.updatedByName is string && data.updatedByName.size() <= 120))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSchoolReport(data) {
+      return data.keys().hasAll(['tahunAjaran', 'ringkasanAi', 'updatedByUid', 'updatedAt'])
+        && data.keys().hasOnly(['tahunAjaran', 'ringkasanAi', 'updatedByUid', 'updatedByName', 'updatedAt'])
+        && data.tahunAjaran is string && data.tahunAjaran.size() == 9 && data.tahunAjaran.matches('^\\d{4}/\\d{4}$')
+        && data.ringkasanAi is string && data.ringkasanAi.size() >= 1 && data.ringkasanAi.size() <= 10000
+        && data.updatedByUid is string && data.updatedByUid.size() >= 1 && data.updatedByUid.size() <= 128
+        && (!('updatedByName' in data) || (data.updatedByName is string && data.updatedByName.size() <= 120))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['targetType', 'targetId', 'targetTitle', 'action', 'actorUid', 'actorName', 'actorRole', 'createdAt'])
+        && data.keys().hasOnly(['targetType', 'targetId', 'targetTitle', 'action', 'actorUid', 'actorName', 'actorRole', 'reason', 'details', 'createdAt'])
+        && data.targetType in ['achievement', 'student', 'settings', 'user', 'report']
+        && data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128
+        && data.targetTitle is string && data.targetTitle.size() >= 1 && data.targetTitle.size() <= 200
+        && data.action is string && data.action.size() >= 1 && data.action.size() <= 60
+        && data.actorUid is string && data.actorUid.size() >= 1 && data.actorUid.size() <= 128
+        && data.actorName is string && data.actorName.size() >= 1 && data.actorName.size() <= 120
+        && data.actorRole in ['admin', 'guru', 'siswa', 'kepala_sekolah']
+        && (!('reason' in data) || (data.reason is string && data.reason.size() <= 500))
+        && (!('details' in data) || (data.details is string && data.details.size() <= 1000))
+        && data.createdAt is timestamp;
+    }
+
+    // 4. Collection Rules
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isAdmin() || (isSignedIn() && request.auth.uid == userId));
+      allow list: if isAdmin();
+      allow create: if isVerified() && isValidId(userId) && isValidUserProfile(incoming())
+        && incoming().uid == userId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            request.auth.uid == userId
+            && incoming().email == request.auth.token.email
+            && incoming().role == 'siswa'
+            && incoming().statusAktif == 'aktif'
+          )
+        );
+      allow update: if isVerified() && isValidId(userId) && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            request.auth.uid == userId
+            && incoming().diff(existing()).affectedKeys().hasOnly(['nama', 'updatedAt'])
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /students/{studentId} {
+      allow get: if isValidId(studentId) && (
+        isStaff()
+        || (isSignedIn() && existing().ownerUid == request.auth.uid)
+      );
+      allow list: if isStaff() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isVerified() && isValidId(studentId) && canManageAchievements()
+        && isValidStudent(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(studentId) && isValidStudent(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          canManageAchievements()
+          || (
+            existing().ownerUid == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly(['fotoUrl', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin();
+    }
+
+    match /achievements/{achievementId} {
+      allow get: if isValidId(achievementId) && (
+        isStaff()
+        || (isSignedIn() && existing().studentOwnerUid == request.auth.uid)
+      );
+      allow list: if isStaff() || (isSignedIn() && resource.data.studentOwnerUid == request.auth.uid);
+      allow create: if isVerified() && isValidId(achievementId)
+        && isValidAchievement(incoming())
+        && exists(/databases/$(database)/documents/students/$(incoming().studentId))
+        && incoming().submittedByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          canManageAchievements()
+          || (
+            userRole() == 'siswa'
+            && get(/databases/$(database)/documents/students/$(incoming().studentId)).data.ownerUid == request.auth.uid
+            && incoming().studentOwnerUid == request.auth.uid
+            && incoming().status == 'Menunggu'
+          )
+        );
+      allow update: if isVerified() && isValidId(achievementId)
+        && isValidAchievement(incoming())
+        && incoming().studentId == existing().studentId
+        && incoming().submittedByUid == existing().submittedByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (
+            canManageAchievements()
+            && existing().status == 'Menunggu'
+            && incoming().status in ['Disetujui', 'Ditolak']
+            && (incoming().status != 'Ditolak' || ('alasanPenolakan' in incoming() && incoming().alasanPenolakan.size() >= 3))
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'poin', 'alasanPenolakan', 'verifiedByUid', 'verifiedByName', 'updatedAt'])
+          )
+          || (
+            canManageAchievements()
+            && existing().status == 'Disetujui'
+            && incoming().status == 'Dibatalkan'
+            && 'alasanPembatalan' in incoming()
+            && incoming().alasanPembatalan.size() >= 5
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'alasanPembatalan', 'verifiedByUid', 'verifiedByName', 'updatedAt'])
+          )
+          || (
+            canManageAchievements()
+            && existing().status in ['Menunggu', 'Ditolak']
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'namaLomba', 'kategori', 'tingkat', 'peringkat', 'tanggal',
+              'tahunAjaran', 'penyelenggara', 'buktiUrl', 'buktiNama', 'deskripsi',
+              'status', 'poin', 'alasanPenolakan', 'verifiedByUid', 'verifiedByName', 'updatedAt'
+            ])
+          )
+          || (
+            isAdmin()
+            && incoming().status == existing().status
+            && incoming().diff(existing()).affectedKeys().hasOnly(['poin', 'updatedAt'])
+          )
+          || (
+            userRole() == 'siswa'
+            && existing().studentOwnerUid == request.auth.uid
+            && existing().status in ['Menunggu', 'Ditolak']
+            && incoming().status == 'Menunggu'
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'namaLomba', 'kategori', 'tingkat', 'peringkat', 'tanggal',
+              'tahunAjaran', 'penyelenggara', 'buktiUrl', 'buktiNama', 'deskripsi',
+              'status', 'poin', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow get: if isSignedIn() && isValidId(settingId);
+      allow list: if isStaff();
+      allow create, update: if isVerified() && isValidId(settingId) && isAdmin()
+        && isValidPointSettings(incoming())
+        && incoming().updatedByUid == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /school_reports/{reportId} {
+      allow get: if isValidId(reportId) && isStaff();
+      allow list: if isStaff();
+      allow create, update: if isVerified() && isValidId(reportId) && (isAdmin() || isKepsek())
+        && isValidSchoolReport(incoming())
+        && incoming().updatedByUid == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /audit_logs/{logId} {
+      allow get: if isValidId(logId) && isStaff();
+      allow list: if isStaff();
+      allow create: if isVerified() && isValidId(logId)
+        && isValidAuditLog(incoming())
+        && incoming().actorUid == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}
