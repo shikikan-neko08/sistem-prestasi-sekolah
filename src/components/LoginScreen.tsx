@@ -1,27 +1,56 @@
 import React, { useState } from 'react';
-import { Award, CheckCircle2, FileSpreadsheet, ShieldCheck } from 'lucide-react';
+import {
+  Award,
+  CheckCircle2,
+  ExternalLink,
+  FileSpreadsheet,
+  RefreshCw,
+  ShieldCheck,
+} from 'lucide-react';
 import { SCHOOL_ASSETS, SCHOOL_NAME, SCHOOL_SUBTITLE } from '../lib/constants';
 
 interface LoginScreenProps {
   onLoginGoogle: () => Promise<void>;
+  onLoginRedirect: () => Promise<void>;
+  popupBlocked?: boolean;
   errorMessage?: string | null;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginGoogle, errorMessage }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+  onLoginGoogle,
+  onLoginRedirect,
+  popupBlocked = false,
+  errorMessage,
+}) => {
   const [loading, setLoading] = useState(false);
 
-  const handleSignIn = async () => {
+  // Trigger signInWithPopup synchronously inside the click gesture before awaiting
+  const handleSignIn = () => {
+    const promise = onLoginGoogle();
     setLoading(true);
-    try {
-      await onLoginGoogle();
-    } finally {
-      setLoading(false);
-    }
+    promise.finally(() => setLoading(false));
   };
+
+  const handleRedirectSignIn = () => {
+    const promise = onLoginRedirect();
+    setLoading(true);
+    promise.finally(() => setLoading(false));
+  };
+
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '/';
+  const isInIframe =
+    typeof window !== 'undefined' &&
+    (() => {
+      try {
+        return window.self !== window.top;
+      } catch {
+        return true;
+      }
+    })();
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Clean Top Bar Contract: Brand wordmark — simple link/context — action */}
+      {/* Clean Top Bar Contract */}
       <header className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-8">
           <div className="flex items-center gap-3 shrink-0">
@@ -68,25 +97,76 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginGoogle, errorMe
             </p>
 
             {errorMessage && (
-              <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
-                {errorMessage}
+              <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 space-y-3">
+                <p className="font-semibold">{errorMessage}</p>
+                {popupBlocked && (
+                  <div className="text-xs text-red-900 space-y-2.5 pt-1 border-t border-red-200">
+                    <p>
+                      <strong>Cara mengatasi:</strong> Klik ikon <em>pop-up diblokir</em> di bilah alamat browser lalu pilih <strong>Selalu izinkan pop-up</strong>, kemudian coba lagi — atau buka aplikasi di tab browser baru.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <a
+                        href={currentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-700 text-white text-xs font-semibold hover:bg-blue-800 whitespace-nowrap"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Buka Portal di Tab Baru</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleSignIn}
+                        disabled={loading}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-red-300 bg-white text-red-800 text-xs font-semibold hover:bg-red-50 cursor-pointer whitespace-nowrap"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Coba Masuk Lagi</span>
+                      </button>
+                      {!isInIframe && (
+                        <button
+                          type="button"
+                          onClick={handleRedirectSignIn}
+                          disabled={loading}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer whitespace-nowrap"
+                        >
+                          <span>Login via Pengalihan</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handleSignIn}
-              disabled={loading}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-6 py-3.5 rounded-lg bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-60 transition-colors cursor-pointer"
-            >
-              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27c3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10c5.35 0 9.25-3.67 9.25-9.09c0-1.15-.15-1.81-.15-1.81"
-                />
-              </svg>
-              <span>{loading ? 'Memproses Masuk...' : 'Masuk dengan Akun Google Sekolah'}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSignIn}
+                disabled={loading}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-6 py-3.5 rounded-lg bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-60 transition-colors cursor-pointer"
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27c3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10c5.35 0 9.25-3.67 9.25-9.09c0-1.15-.15-1.81-.15-1.81"
+                  />
+                </svg>
+                <span>{loading ? 'Memproses Masuk...' : 'Masuk dengan Akun Google Sekolah'}</span>
+              </button>
+
+              {isInIframe && !popupBlocked && (
+                <a
+                  href={currentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-3.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Buka di Tab Baru</span>
+                </a>
+              )}
+            </div>
 
             <p className="mt-3 text-xs text-slate-500">
               Akses otomatis disesuaikan dengan peran akun Anda: Admin, Guru/Pembina, Siswa, atau Kepala Sekolah.

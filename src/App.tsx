@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
+import {
+  getRedirectResult,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  User,
+} from 'firebase/auth';
 import {
   addDoc,
   collection,
@@ -74,6 +81,7 @@ function MainApp() {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [popupBlocked, setPopupBlocked] = useState(false);
 
   // Admin role preview mode (UI-only preview for admin testing all 4 roles cleanly)
   const [previewRole, setPreviewRole] = useState<UserRole | null>(null);
@@ -105,9 +113,15 @@ function MainApp() {
 
   // 1. Auth & User Profile Bootstrap
   useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      const msg = err instanceof Error ? err.message : 'Gagal menyelesaikan login pengalihan.';
+      setAuthError(msg);
+    });
+
     const unsub = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       setAuthError(null);
+      setPopupBlocked(false);
       if (!user) {
         setUserProfile(null);
         setAuthReady(true);
@@ -402,13 +416,35 @@ function MainApp() {
   // Auth Actions
   const handleGoogleLogin = async () => {
     setAuthError(null);
+    setPopupBlocked(false);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
+      const code = (err as { code?: string })?.code ?? '';
+      const message = err instanceof Error ? err.message : '';
+      if (code === 'auth/popup-blocked' || message.includes('auth/popup-blocked')) {
+        setPopupBlocked(true);
+        setAuthError(
+          'Jendela pop-up login Google diblokir oleh browser atau pembatasan iframe. Izinkan pop-up di bilah alamat browser atau buka portal di tab baru.'
+        );
+      } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setAuthError('Proses masuk dibatalkan sebelum selesai. Silakan klik kembali untuk masuk.');
+      } else {
+        setAuthError(
+          message || 'Gagal masuk dengan Google. Pastikan pop-up browser diizinkan.'
+        );
+      }
+    }
+  };
+
+  const handleGoogleRedirectLogin = async () => {
+    setAuthError(null);
+    setPopupBlocked(false);
+    try {
+      await signInWithRedirect(auth, googleProvider);
+    } catch (err) {
       setAuthError(
-        err instanceof Error
-          ? err.message
-          : 'Gagal masuk dengan Google. Pastikan pop-up browser diizinkan.'
+        err instanceof Error ? err.message : 'Gagal mengalihkan halaman ke login Google.'
       );
     }
   };
@@ -829,7 +865,14 @@ function MainApp() {
   }
 
   if (!firebaseUser || !userProfile) {
-    return <LoginScreen onLoginGoogle={handleGoogleLogin} errorMessage={authError} />;
+    return (
+      <LoginScreen
+        onLoginGoogle={handleGoogleLogin}
+        onLoginRedirect={handleGoogleRedirectLogin}
+        popupBlocked={popupBlocked}
+        errorMessage={authError}
+      />
+    );
   }
 
   if (userProfile.statusAktif === 'nonaktif') {
